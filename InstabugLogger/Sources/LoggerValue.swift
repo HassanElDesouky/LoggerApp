@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct LoggerValue {
+public struct LoggerValue: Comparable {
   public enum Level: Int {
     case verbose = 0
     case error = 1
@@ -58,5 +58,10 @@ public struct LoggerValue {
   /// - Returns: a string describing the current log level.
   func getCurrentLevelName() -> String {
     return level.getLevelName()
+  }
+
+  // MARK: Comparable
+  public static func <(lhs: LoggerValue, rhs: LoggerValue) -> Bool {
+    return lhs.creationDate < rhs.creationDate
   }
 }
