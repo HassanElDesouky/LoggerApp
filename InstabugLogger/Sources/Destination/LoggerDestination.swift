@@ -14,14 +14,14 @@ open class LoggerDestination: LoggerFormat {
   /// runs in own serial background thread for better performance
   open var asynchronously = false
 
-  let moduleIdentification: String
+  let moduleIdentifier: String
 
   // each destination instance must have an own serial queue to ensure serial output
   // GCD gives it a prioritization between User Initiated and Utility
   var destinationQueue: DispatchQueue?
 
-  public init(identification: String) {
-    self.moduleIdentification = identification
+  public init(identifier: String) {
+    self.moduleIdentifier = identifier
     let uuid = UUID().uuidString
     let queueLabel = "InstabugLogger-queue-" + uuid
     destinationQueue = DispatchQueue(label: queueLabel,

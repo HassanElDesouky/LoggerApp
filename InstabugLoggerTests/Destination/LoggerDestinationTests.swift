@@ -13,14 +13,14 @@ class LoggerDestinationTests: XCTestCase {
 
   func testInit() {
     let id = "com.Instabug.InstabugLogger.DestinationTests"
-    let destination = LoggerDestination(identification: id)
-    XCTAssertEqual(destination.moduleIdentification, id)
+    let destination = LoggerDestination(identifier: id)
+    XCTAssertEqual(destination.moduleIdentifier, id)
     XCTAssertNotNil(destination.destinationQueue)
   }
 
   func testFormatLog() {
     let id = "com.Instabug.InstabugLogger.DestinationTests"
-    let destination = LoggerDestination(identification: id)
+    let destination = LoggerDestination(identifier: id)
 
     let date = Date(timeIntervalSinceReferenceDate: 0) // "Jan 1, 2001 at 2:00 AM"
     let dateFormatter = DateFormatter()
