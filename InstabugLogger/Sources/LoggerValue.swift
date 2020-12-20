@@ -23,9 +23,9 @@ public struct LoggerValue: Comparable {
     }
   }
   
-  let creationDate: Date
-  let level: Level
-  var message = ""
+  public let creationDate: Date
+  public let level: Level
+  public private(set) var message = ""
 
   init(level: Level, message: String) {
     self.creationDate = Date()
