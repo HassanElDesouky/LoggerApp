@@ -16,32 +16,45 @@ public final class InstabugLogger {
   }
   private let logsLimitPerSession = 5_000
 
+  private let destination: LoggerDestination
+
   private let loggerQueueLabel = "com.Instabug.InstabugLoggerQueue"
   private let loggerQueue: DispatchQueue!
 
   private var unsafeLoggers: [LoggerValue] = []
   private var loggers: [LoggerValue] {
     var safeLoggers: [LoggerValue]!
-    loggerQueue.sync {
-      safeLoggers = self.unsafeLoggers
+    loggerQueue.sync { [weak self] in
+      safeLoggers = self?.unsafeLoggers
     }
     return safeLoggers
   }
 
   let identifier: String
-  private let destination: LoggerDestination
 
-  public init(identifier: String) {
+  /// Initalize an InstabugLogger with an `identifier` and a custome `LoggerDestination`
+  /// - Parameters:
+  ///   - identifier: the InstabugLogger session identifier.
+  ///   - destination: the LoggerDestination.
+  public init(identifier: String, destination: LoggerDestination) {
     // TODO: Clear logs from previous session.
 
     self.identifier = identifier
-    self.destination = ConsoleDestination(identification: identifier)
+    self.destination = destination
     self.loggerQueue = DispatchQueue(label: loggerQueueLabel,
                                      attributes: .concurrent)
   }
 
-  /// Creates a `LoggerValue` from `message` and `level`, add it to the current session's loggers array,
-  ///  and emit it to the `destination`.
+  /// Initalize an InstabugLogger with an `identifier` and with the default `ConsoleDestination`.
+  /// - Parameters:
+  ///   - identifier: InstabugLogger session identifier
+  convenience public init(identifier: String) {
+    let consoleDestination = ConsoleDestination(identifier: identifier)
+    self.init(identifier: identifier, destination: consoleDestination)
+  }
+
+  /// Creates a `LoggerValue` from `message` and `level`, add it to the current session's loggers
+  ///  array, and emit it to the `destination`.
   /// - Parameters:
   ///   - message: the log message which will be added to the loggers array
   ///   and emitted to the `destination`.
@@ -65,7 +78,7 @@ public final class InstabugLogger {
     }
   }
 
-  /// Creates a `verbose` logger-level with `message`, add it to the current session's loggers array,
+  /// Creates a `verbose`-level logger with `message`, add it to the current session's loggers array,
   /// and emit it to the `destination`.
   /// - Parameter message: the log message which will be added to the loggers array
   /// and emitted to the `destination`.
@@ -79,7 +92,7 @@ public final class InstabugLogger {
     }
   }
 
-  /// Creates an `error` logger-level with `message`, add it to the current session's loggers array,
+  /// Creates an `error`-level logger with `message`, add it to the current session's loggers array,
   /// and emit it to the `destination`.
   /// - Parameter message: the log message which will be added to the loggers array
   /// and emitted to the `destination`.
