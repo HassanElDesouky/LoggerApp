@@ -10,10 +10,6 @@ import Foundation
 
 /// Emits log messages to the console.
 final class ConsoleDestination: LoggerDestination {
-  override init(identifier: String) {
-    super.init(identifier: identifier)
-  }
-
   override func emit(logger: LoggerValue) -> String {
     let formattedLog = super.emit(logger: logger)
     print(formattedLog)

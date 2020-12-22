@@ -12,15 +12,12 @@ import XCTest
 class LoggerDestinationTests: XCTestCase {
 
   func testInit() {
-    let id = "com.Instabug.InstabugLogger.DestinationTests"
-    let destination = LoggerDestination(identifier: id)
-    XCTAssertEqual(destination.moduleIdentifier, id)
+    let destination = LoggerDestination()
     XCTAssertNotNil(destination.destinationQueue)
   }
 
   func testFormatLog() {
-    let id = "com.Instabug.InstabugLogger.DestinationTests"
-    let destination = LoggerDestination(identifier: id)
+    let destination = LoggerDestination()
 
     let date = Date(timeIntervalSinceReferenceDate: 0) // "Jan 1, 2001 at 2:00 AM"
     let dateFormatter = DateFormatter()

@@ -9,19 +9,16 @@
 import Foundation
 
 /// A logger destination which all others inherit from. do not directly use
-open class LoggerDestination: LoggerFormat {
+open class LoggerDestination {
 
   /// runs in own serial background thread for better performance
   open var asynchronously = false
 
-  let moduleIdentifier: String
-
   // each destination instance must have an own serial queue to ensure serial output
   // GCD gives it a prioritization between User Initiated and Utility
-  var destinationQueue: DispatchQueue?
+  var destinationQueue: DispatchQueue!
 
-  public init(identifier: String) {
-    self.moduleIdentifier = identifier
+  public init() {
     let uuid = UUID().uuidString
     let queueLabel = "InstabugLogger-queue-" + uuid
     destinationQueue = DispatchQueue(label: queueLabel,
@@ -36,7 +33,7 @@ open class LoggerDestination: LoggerFormat {
   }
 
   // MARK: Format
-  public func formatLog(logger: LoggerValue) -> String {
+  open func formatLog(logger: LoggerValue) -> String {
     let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "y-MM-dd H:m:ss.SSSS"
     let formattedDate = dateFormatter.string(from: logger.creationDate)
