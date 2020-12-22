@@ -7,50 +7,54 @@
 //
 
 import Foundation
+import CoreData
 
 /// A logger framework that emits logs to the console, and keeps track of all of the emittied logs..
 public final class InstabugLogger {
 
-  enum LoggerSessionError: Error {
-    case logsPerSessionExceed
-  }
-  private let logsLimitPerSession = 5_000
-
-  private let destination: LoggerDestination
-
+  private let loggerCoreDataManager: LoggerDataManager
   private let loggerQueueLabel = "com.Instabug.InstabugLoggerQueue"
-  private let loggerQueue: DispatchQueue!
+  let destination: LoggerDestination
+  let loggerQueue: DispatchQueue
 
-  private var unsafeLoggers: [LoggerValue] = []
-  private var loggers: [LoggerValue] {
-    var safeLoggers: [LoggerValue]!
-    loggerQueue.sync { [weak self] in
-      safeLoggers = self?.unsafeLoggers
-    }
-    return safeLoggers
-  }
-
-  let identifier: String
+  let logsLimitPerSession = 5_000
 
   /// Initalize an InstabugLogger with an `identifier` and a custome `LoggerDestination`
   /// - Parameters:
   ///   - identifier: the InstabugLogger session identifier.
   ///   - destination: the LoggerDestination.
-  public init(identifier: String, destination: LoggerDestination) {
-    // TODO: Clear logs from previous session.
-
-    self.identifier = identifier
-    self.destination = destination
-    self.loggerQueue = DispatchQueue(label: loggerQueueLabel,
-                                     attributes: .concurrent)
+  convenience public init(destination: LoggerDestination) {
+    let loggerCoreDataManager = LoggerDataManager()
+    self.init(mainContext: loggerCoreDataManager.mainContext,
+              backgroundContext: loggerCoreDataManager.backgroundContext,
+              destination: destination, forTesting: false)
   }
 
   /// Initalize an InstabugLogger with an `identifier` and with the default `ConsoleDestination`.
   /// - Parameters:
   ///   - identifier: InstabugLogger session identifier
-  convenience public init(identifier: String) {
-    let consoleDestination = ConsoleDestination(identifier: identifier)
-    self.init(identifier: identifier, destination: consoleDestination)
+  convenience public init() {
+    let consoleDestination = ConsoleDestination()
+    self.init(destination: consoleDestination)
+  }
+
+  /// Internal `init` for testing.
+  init(mainContext: NSManagedObjectContext,
+       backgroundContext: NSManagedObjectContext,
+       destination: LoggerDestination,
+       forTesting: Bool = true) {
+    self.destination = destination
+    self.loggerQueue = DispatchQueue(label: loggerQueueLabel,
+                                     attributes: .concurrent)
+    self.loggerCoreDataManager =
+      LoggerDataManager(mainContext: mainContext,
+                            backgroundContext: backgroundContext,
+                            logsLimit: self.logsLimitPerSession)
+    if forTesting {
+      self.loggerCoreDataManager.deleteAllLogsForTests()
+    } else {
+      self.loggerCoreDataManager.deleteAllLogs()
+    }
   }
 
   /// Creates a `LoggerValue` from `message` and `level`, add it to the current session's loggers
@@ -58,22 +62,15 @@ public final class InstabugLogger {
   /// - Parameters:
   ///   - message: the log message which will be added to the loggers array
   ///   and emitted to the `destination`.
-  ///   - level: the log level
-  /// - Throws: a `LoggerSessionError.logsPerSessionExceed` if current logs in the session
-  /// excedes _5,000_ logs.
+  ///   - level: the log level.
   public func log(_ message: @autoclosure () -> String,
-                  level: LoggerValue.Level) throws {
-    if loggers.count > logsLimitPerSession {
-      throw LoggerSessionError.logsPerSessionExceed
-    }
-
+                  level: LoggerValue.Level) {
     let logger = LoggerValue(level: level, message: message())
     loggerQueue.async(flags: .barrier) { [weak self] in
       guard let self = self else {
         return
       }
-      self.unsafeLoggers.append(logger)
-
+      self.loggerCoreDataManager.saveLog(logger)
       self.dispatchLog(logger: logger)
     }
   }
@@ -82,39 +79,35 @@ public final class InstabugLogger {
   /// and emit it to the `destination`.
   /// - Parameter message: the log message which will be added to the loggers array
   /// and emitted to the `destination`.
-  /// - Throws: a `LoggerSessionError.logsPerSessionExceed` if current logs in the session
-  /// excedes _5,000_ logs.
-  public func verbose(_ message: @autoclosure () -> String) throws {
-    do {
-      try log(message(), level: .verbose)
-    } catch LoggerSessionError.logsPerSessionExceed {
-      throw LoggerSessionError.logsPerSessionExceed
-    }
+  public func verbose(_ message: @autoclosure () -> String) {
+    log(message(), level: .verbose)
   }
 
   /// Creates an `error`-level logger with `message`, add it to the current session's loggers array,
   /// and emit it to the `destination`.
   /// - Parameter message: the log message which will be added to the loggers array
   /// and emitted to the `destination`.
-  /// - Throws: a `LoggerSessionError.logsPerSessionExceed` if current logs in the session
-  /// excedes _5,000_ logs.
-  public func error(_ message: @autoclosure () -> String) throws {
-    do {
-      try log(message(), level: .error)
-    } catch LoggerSessionError.logsPerSessionExceed {
-      throw LoggerSessionError.logsPerSessionExceed
-    }
+  public func error(_ message: @autoclosure () -> String) {
+    log(message(), level: .error)
   }
 
   /// - Returns: all of the current session's logs as a `LoggerValue` array.
   public func fetchLogs() -> [LoggerValue] {
+    var currentSessionLogs = [LoggerEntity]()
+    currentSessionLogs = self.loggerCoreDataManager.fetchAllLogs()
+    var loggers = [LoggerValue]()
+    for log in currentSessionLogs {
+      let logLevel = LoggerValue.Level(rawValue: Int(log.logLevel))!
+      loggers.append(LoggerValue(level: logLevel, message: log.message!,
+                                 date: log.creationDate!))
+    }
     return loggers
   }
 
   /// - Returns: all of the current session's logs as an array of `String`s.
   public func fetchLogsStrings() -> [String] {
     var allLogs = [String]()
-    for log in loggers {
+    for log in fetchLogs() {
       allLogs.append(destination.formatLog(logger: log))
     }
     return allLogs
@@ -146,15 +139,13 @@ extension InstabugLogger {
   ///   - logger: the logger value
   /// - Throws: a `LoggerSessionError.logsPerSessionExceed` if current logs in the session
   /// excedes _5,000_ logs.
-  func log(logger: LoggerValue) throws {
-    if loggers.count > logsLimitPerSession {
-      throw LoggerSessionError.logsPerSessionExceed
-    }
-
+  func log(logger: LoggerValue) {
     loggerQueue.async(flags: .barrier) { [weak self] in
-      self?.unsafeLoggers.append(logger)
-
-      self?.dispatchLog(logger: logger)
+      guard let self = self else {
+        return
+      }
+      self.loggerCoreDataManager.saveLog(logger)
+      self.dispatchLog(logger: logger)
     }
   }
 }
