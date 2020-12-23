@@ -14,29 +14,20 @@ public final class InstabugLogger {
 
   private let loggerCoreDataManager: LoggerDataManager
   private let loggerQueueLabel = "com.Instabug.InstabugLoggerQueue"
-  let destination: LoggerDestination
-  let loggerQueue: DispatchQueue
+  var destination: LoggerDestination
 
   let logsLimitPerSession = 5_000
 
-  /// Initalize an InstabugLogger with an `identifier` and a custome `LoggerDestination`
-  /// - Parameters:
-  ///   - identifier: the InstabugLogger session identifier.
-  ///   - destination: the LoggerDestination.
-  convenience public init(destination: LoggerDestination) {
+  public static let shared = InstabugLogger()
+
+  /// Initalize an InstabugLogger with the default `ConsoleDestination`.
+  convenience init() {
+    let consoleDestination = ConsoleDestination()
     let loggerCoreDataManager = LoggerDataManager()
     self.init(mainContext: loggerCoreDataManager.mainContext,
               backgroundContext: loggerCoreDataManager.backgroundContext,
               storeInMemory: false,
-              destination: destination)
-  }
-
-  /// Initalize an InstabugLogger with an `identifier` and with the default `ConsoleDestination`.
-  /// - Parameters:
-  ///   - identifier: InstabugLogger session identifier
-  convenience public init() {
-    let consoleDestination = ConsoleDestination()
-    self.init(destination: consoleDestination)
+              destination: consoleDestination)
   }
 
   /// Internal `init` for testing.
@@ -44,14 +35,19 @@ public final class InstabugLogger {
        backgroundContext: NSManagedObjectContext, storeInMemory: Bool,
        destination: LoggerDestination) {
     self.destination = destination
-    self.loggerQueue = DispatchQueue(label: loggerQueueLabel,
-                                     attributes: .concurrent)
     self.loggerCoreDataManager =
       LoggerDataManager(mainContext: mainContext,
                             backgroundContext: backgroundContext,
                             logsLimit: self.logsLimitPerSession,
                             storeInMemory: storeInMemory)
     self.loggerCoreDataManager.deleteAllLogs()
+  }
+
+  /// Set an InstabugLogger with a custome `LoggerDestination`
+  /// - Parameters:
+  ///   - destination: the LoggerDestination.
+  public func set(destination: LoggerDestination) {
+    self.destination = destination
   }
 
   /// Creates a `LoggerValue` from `message` and `level`, add it to the current session's loggers
@@ -63,13 +59,8 @@ public final class InstabugLogger {
   public func log(_ message: @autoclosure () -> String,
                   level: LoggerValue.Level) {
     let logger = LoggerValue(level: level, message: message())
-    loggerQueue.async(flags: .barrier) { [weak self] in
-      guard let self = self else {
-        return
-      }
-      self.loggerCoreDataManager.saveLog(logger)
-      self.dispatchLog(logger: logger)
-    }
+    self.loggerCoreDataManager.saveLog(logger)
+    self.dispatchLog(logger: logger)
   }
 
   /// Creates a `verbose`-level logger with `message`, add it to the current session's loggers array,
@@ -137,12 +128,7 @@ extension InstabugLogger {
   /// - Throws: a `LoggerSessionError.logsPerSessionExceed` if current logs in the session
   /// excedes _5,000_ logs.
   func log(logger: LoggerValue) {
-    loggerQueue.async(flags: .barrier) { [weak self] in
-      guard let self = self else {
-        return
-      }
-      self.loggerCoreDataManager.saveLog(logger)
-      self.dispatchLog(logger: logger)
-    }
+    self.loggerCoreDataManager.saveLog(logger)
+    self.dispatchLog(logger: logger)
   }
 }

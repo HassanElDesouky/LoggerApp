@@ -31,8 +31,6 @@ class InstabugLoggerTests: XCTestCase {
     let loggerDestination = ConsoleDestination()
     XCTAssertEqual(String(describing: instabugLogger.destination.self),
                    String(describing: loggerDestination.self))
-    XCTAssertEqual(instabugLogger.loggerQueue.label,
-                   "com.Instabug.InstabugLoggerQueue")
     XCTAssertEqual(instabugLogger.fetchLogs().count, 0)
     XCTAssertEqual(String(describing: instabugLogger.destination.self),
                    String(describing: loggerDestination.self))
@@ -40,52 +38,19 @@ class InstabugLoggerTests: XCTestCase {
   
   func testLog() {
     instabugLogger.log("Verbose Message", level: .verbose)
-
-    expectation(forNotification: .NSManagedObjectContextDidSave,
-                object: coreDataTestManager.mainContext) { _ in
-      return true
-    }
-
-    waitForExpectations(timeout: 1.0) { (error) in
-      XCTAssertEqual(self.instabugLogger.fetchLogs().count, 1)
-    }
-
+    XCTAssertEqual(self.instabugLogger.fetchLogs().count, 1)
     instabugLogger.log("Error Message", level: .error)
-
-    expectation(forNotification: .NSManagedObjectContextDidSave,
-                object: coreDataTestManager.mainContext) { _ in
-      return true
-    }
-
-    waitForExpectations(timeout: 1.0) { (error) in
-      XCTAssertEqual(self.instabugLogger.fetchLogs().count, 2)
-    }
+    XCTAssertEqual(self.instabugLogger.fetchLogs().count, 2)
   }
 
   func testErrorLog() {
     instabugLogger.error("Error Message")
-
-    expectation(forNotification: .NSManagedObjectContextDidSave,
-                object: coreDataTestManager.mainContext) { _ in
-      return true
-    }
-
-    waitForExpectations(timeout: 1.0) { (error) in
-      XCTAssertEqual(self.instabugLogger.fetchLogs().count, 1)
-    }
+    XCTAssertEqual(self.instabugLogger.fetchLogs().count, 1)
   }
 
   func testVerboseLog() {
     instabugLogger.verbose("Verbose Message")
-
-    expectation(forNotification: .NSManagedObjectContextDidSave,
-                object: coreDataTestManager.mainContext) { _ in
-      return true
-    }
-
-    waitForExpectations(timeout: 1.0) { (error) in
-      XCTAssertEqual(self.instabugLogger.fetchLogs().count, 1)
-    }
+    XCTAssertEqual(self.instabugLogger.fetchLogs().count, 1)
   }
 
   func testFetchAllLogs() {
@@ -125,14 +90,7 @@ extension InstabugLoggerTests {
                              date: date)
     instabugLogger.log(logger: logger)
 
-    expectation(forNotification: .NSManagedObjectContextDidSave,
-                object: coreDataTestManager.mainContext) { _ in
-      return true
-    }
-
-    waitForExpectations(timeout: 1) { (error) in
-      XCTAssertEqual(self.instabugLogger.fetchLogs().count, expectedCount)
-    }
+    XCTAssertEqual(self.instabugLogger.fetchLogs().count, expectedCount)
 
     date = Calendar.current.date(byAdding: .day, value: 1, to: date)!
   }
