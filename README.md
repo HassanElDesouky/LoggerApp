@@ -11,10 +11,10 @@ First, you will need to clone the repo and compile the library, then you will ne
 
 ```swift
 // 1) Let's import the logging API package.
-import IstabugLogger
+import InstabugLogger
 
 // 2) We need to create a logger.
-let logger = Logger()
+let logger = InstabugLogger.shared
 
 // 3) We're now ready to use it.
 logger.log("Error message!", level: .error)
@@ -39,7 +39,7 @@ logger.log("Error message!", level: .error)
 - To retrieve all messages in the session you can use:
   - `fetchLogs()` which returns a `LoggerValue` array sorted by the log creation date.
   - `fetchLogsStrings()` which returns a formatted strings array sorted by the log creation date.
-- To create your own `LoggerDestination` you would have to subclass `LoggerDestination`. Then you can override the `emit` method and customize your `formatLog`.
+- To create your own `LoggerDestination` you would have to subclass `LoggerDestination`. Then you can override the `emit` method and customize your `formatLog`. Finally, to use it, simply set the logger destination with `InstabugLogger.shared.set(_LoggerDestination_)`
 
 ## Done / Todo
 
@@ -57,13 +57,9 @@ logger.log("Error message!", level: .error)
 
 - [x] Logs should be formatted as follows `[Date - Log level - message]`
 
-- [x] Over **93%** code coverage.
+- [x] Over **94%** code coverage.
 
 - [x] Provide documentation (in code and in GitHub's `README.md`)
 
-- [x] Design your framework to be a reusable component.
-
-- [ ] Improve CoreData integration.
-
-- [ ] Improve documentation.
+- [x] Design the framework to be a reusable component.
 
