@@ -15,57 +15,44 @@ class LoggerDataManager {
   let logsLimit: Int
   let backgroundContext: NSManagedObjectContext
   let mainContext: NSManagedObjectContext
+  let isStoreInMemory: Bool
   var firstLogObjectID: NSManagedObjectID?
 
   init(mainContext: NSManagedObjectContext =
         CoreDataManager.shared.mainContext,
        backgroundContext: NSManagedObjectContext =
         CoreDataManager.shared.backgroundContext,
-       logsLimit: Int = 5000) {
+       logsLimit: Int = 5000,
+       storeInMemory: Bool = false) {
     self.mainContext = mainContext
     self.backgroundContext = backgroundContext
     self.logsLimit = logsLimit
+    self.isStoreInMemory = storeInMemory
   }
 
   // MARK: Save a Log
   func saveLog(_ log: LoggerValue) {
     let logs = fetchAllLogs()
-    if logs.count >= logsLimit {
-      backgroundContext.performAndWait {
+    backgroundContext.performAndWait {
+      if logs.count >= logsLimit {
         let firstLog = logs[0]
         let objectID = firstLog.objectID
 
         if let logInContext = try? backgroundContext.existingObject(with: objectID) {
           backgroundContext.delete(logInContext)
-          let logger =
-            NSEntityDescription.insertNewObject(forEntityName: self.entityName,
-                                                into: backgroundContext) as! LoggerEntity
-
-          logger.creationDate = log.creationDate
-          logger.logLevel = Int16(log.level.rawValue)
-          logger.message = log.message
-          do {
-            try backgroundContext.save()
-          } catch let error {
-            fatalError("\(error)")
-          }
         }
       }
-    } else {
-      backgroundContext.performAndWait {
-        let logger =
-          NSEntityDescription.insertNewObject(forEntityName: self.entityName,
-                                              into: backgroundContext) as! LoggerEntity
+      let logger =
+        NSEntityDescription.insertNewObject(forEntityName: self.entityName,
+                                            into: backgroundContext) as! LoggerEntity
 
-        logger.creationDate = log.creationDate
-        logger.logLevel = Int16(log.level.rawValue)
-        logger.message = log.message
-
-        do {
-          try backgroundContext.save()
-        } catch let error {
-          fatalError("\(error)")
-        }
+      logger.creationDate = log.creationDate
+      logger.logLevel = Int16(log.level.rawValue)
+      logger.message = log.message
+      do {
+        try backgroundContext.save()
+      } catch let error {
+        fatalError("\(error)")
       }
     }
   }
@@ -92,24 +79,18 @@ class LoggerDataManager {
   }
 
   func deleteAllLogs() {
-    let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName:
-                                                              entityName)
-    let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-    backgroundContext.performAndWait {
-      _ = try? backgroundContext.execute(deleteRequest)
-      try? backgroundContext.save()
+    if !isStoreInMemory {
+      let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
+      let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+      backgroundContext.performAndWait {
+        _ = try? backgroundContext.execute(deleteRequest)
+        try? backgroundContext.save()
+      }
+    } else {
+      CoreDataManager.shared.persistentContainer.destroyPersistentStore()
     }
   }
 
-  func deleteAllLogsForTests() {
-    let allLogs = fetchAllLogs()
-    for log in allLogs {
-      backgroundContext.performAndWait {
-        backgroundContext.delete(log)
-        try? backgroundContext.save()
-      }
-    }
-  }
 
   // MARK: Fetch all Logs
   func fetchAllLogs() -> [LoggerEntity] {

@@ -27,7 +27,8 @@ public final class InstabugLogger {
     let loggerCoreDataManager = LoggerDataManager()
     self.init(mainContext: loggerCoreDataManager.mainContext,
               backgroundContext: loggerCoreDataManager.backgroundContext,
-              destination: destination, forTesting: false)
+              storeInMemory: false,
+              destination: destination)
   }
 
   /// Initalize an InstabugLogger with an `identifier` and with the default `ConsoleDestination`.
@@ -40,21 +41,17 @@ public final class InstabugLogger {
 
   /// Internal `init` for testing.
   init(mainContext: NSManagedObjectContext,
-       backgroundContext: NSManagedObjectContext,
-       destination: LoggerDestination,
-       forTesting: Bool = true) {
+       backgroundContext: NSManagedObjectContext, storeInMemory: Bool,
+       destination: LoggerDestination) {
     self.destination = destination
     self.loggerQueue = DispatchQueue(label: loggerQueueLabel,
                                      attributes: .concurrent)
     self.loggerCoreDataManager =
       LoggerDataManager(mainContext: mainContext,
                             backgroundContext: backgroundContext,
-                            logsLimit: self.logsLimitPerSession)
-    if forTesting {
-      self.loggerCoreDataManager.deleteAllLogsForTests()
-    } else {
-      self.loggerCoreDataManager.deleteAllLogs()
-    }
+                            logsLimit: self.logsLimitPerSession,
+                            storeInMemory: storeInMemory)
+    self.loggerCoreDataManager.deleteAllLogs()
   }
 
   /// Creates a `LoggerValue` from `message` and `level`, add it to the current session's loggers

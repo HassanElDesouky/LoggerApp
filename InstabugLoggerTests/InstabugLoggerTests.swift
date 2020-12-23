@@ -19,26 +19,30 @@ class InstabugLoggerTests: XCTestCase {
   override func setUp() {
     super.setUp()
     coreDataTestManager = CoreDataTestManager()
+
     instabugLogger = InstabugLogger(mainContext: coreDataTestManager.mainContext,
                                     backgroundContext:
                                       coreDataTestManager.mainContext,
-                                    destination: ConsoleDestination(),
-                                    forTesting: true)
+                                    storeInMemory: true,
+                                    destination: ConsoleDestination())
   }
 
   func testInit() {
     let loggerDestination = ConsoleDestination()
-    XCTAssertEqual(String(describing: instabugLogger.destination.self), String(describing: loggerDestination.self))
+    XCTAssertEqual(String(describing: instabugLogger.destination.self),
+                   String(describing: loggerDestination.self))
     XCTAssertEqual(instabugLogger.loggerQueue.label,
                    "com.Instabug.InstabugLoggerQueue")
     XCTAssertEqual(instabugLogger.fetchLogs().count, 0)
-    XCTAssertEqual(String(describing: instabugLogger.destination.self), String(describing: loggerDestination.self))
+    XCTAssertEqual(String(describing: instabugLogger.destination.self),
+                   String(describing: loggerDestination.self))
   }
   
   func testLog() {
     instabugLogger.log("Verbose Message", level: .verbose)
 
-    expectation(forNotification: .NSManagedObjectContextDidSave, object: coreDataTestManager.mainContext) { _ in
+    expectation(forNotification: .NSManagedObjectContextDidSave,
+                object: coreDataTestManager.mainContext) { _ in
       return true
     }
 
@@ -48,7 +52,8 @@ class InstabugLoggerTests: XCTestCase {
 
     instabugLogger.log("Error Message", level: .error)
 
-    expectation(forNotification: .NSManagedObjectContextDidSave, object: coreDataTestManager.mainContext) { _ in
+    expectation(forNotification: .NSManagedObjectContextDidSave,
+                object: coreDataTestManager.mainContext) { _ in
       return true
     }
 
@@ -60,7 +65,8 @@ class InstabugLoggerTests: XCTestCase {
   func testErrorLog() {
     instabugLogger.error("Error Message")
 
-    expectation(forNotification: .NSManagedObjectContextDidSave, object: coreDataTestManager.mainContext) { _ in
+    expectation(forNotification: .NSManagedObjectContextDidSave,
+                object: coreDataTestManager.mainContext) { _ in
       return true
     }
 
@@ -72,7 +78,8 @@ class InstabugLoggerTests: XCTestCase {
   func testVerboseLog() {
     instabugLogger.verbose("Verbose Message")
 
-    expectation(forNotification: .NSManagedObjectContextDidSave, object: coreDataTestManager.mainContext) { _ in
+    expectation(forNotification: .NSManagedObjectContextDidSave,
+                object: coreDataTestManager.mainContext) { _ in
       return true
     }
 
