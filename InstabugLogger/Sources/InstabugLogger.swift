@@ -125,8 +125,6 @@ extension InstabugLogger {
   ///  and emit it to the `destination`.
   /// - Parameters:
   ///   - logger: the logger value
-  /// - Throws: a `LoggerSessionError.logsPerSessionExceed` if current logs in the session
-  /// excedes _5,000_ logs.
   func log(logger: LoggerValue) {
     self.loggerCoreDataManager.saveLog(logger)
     self.dispatchLog(logger: logger)
